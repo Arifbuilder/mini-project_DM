@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String?  @unique
+  password    String?
+  name        String?
+  isGuest     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  preferences UserPreferences?
+  messages    Message[]
+}
+
+model UserPreferences {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  latitude             Float?
+  longitude            Float?
+  locationName         String?
+  radiusKm             Int      @default(100)
+  sensitivity          String   @default("medium")
+  disasterTypes        String   @default("earthquake,flood,wildfire,storm,tsunami,landslide")
+  notificationChannels String   @default("in-app")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+}
+
+model DisasterEvent {
+  id          String   @id @default(cuid())
+  externalId  String
+  source      String
+  type        String
+  severity    Float    @default(0)
+  title       String
+  description String?
+  latitude    Float
+  longitude   Float
+  timestamp   DateTime
+  imageUrl    String?
+  rawPayload  String?
+  createdAt   DateTime @default(now())
+
+  @@unique([source, externalId])
+  @@index([type])
+  @@index([timestamp])
+}
+
+model Message {
+  id           String   @id @default(cuid())
+  text         String
+  type         String   @default("chat")  // chat, report, alert
+  userName     String   @default("Anonymous")
+  latitude     Float?
+  longitude    Float?
+  disasterType String?
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+}
