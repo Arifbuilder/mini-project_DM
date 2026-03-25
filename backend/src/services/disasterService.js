@@ -3,10 +3,12 @@
  * Aggregates, normalizes, deduplicates events from all connectors
  */
 const cache = require('./cache');
+const { PrismaClient } = require('@prisma/client');
 const { fetchUSGSEarthquakes } = require('../connectors/usgs');
 const { fetchEONETEvents } = require('../connectors/eonet');
 const { fetchGDACSEvents } = require('../connectors/gdacs');
 
+const prisma = new PrismaClient();
 const CACHE_KEY = 'disaster_events';
 
 // In-memory event store
@@ -74,6 +76,44 @@ async function pollAllSources(io) {
   // Find new events
   const previousIds = new Set(cachedEvents.map(e => e.id));
   const newEvents = allEvents.filter(e => !previousIds.has(e.id));
+
+  // Save/Upsert to Database
+  try {
+    for (const event of allEvents) {
+      await prisma.disasterEvent.upsert({
+        where: {
+          source_externalId: {
+            source: event.source,
+            externalId: event.externalId,
+          },
+        },
+        update: {
+          severity: event.severity,
+          title: event.title,
+          description: event.description,
+          latitude: event.latitude,
+          longitude: event.longitude,
+        },
+        create: {
+          id: event.id,
+          externalId: event.externalId,
+          source: event.source,
+          type: event.type,
+          severity: event.severity,
+          title: event.title,
+          description: event.description,
+          latitude: event.latitude,
+          longitude: event.longitude,
+          timestamp: new Date(event.timestamp),
+          imageUrl: event.imageUrl,
+          rawPayload: event.rawPayload,
+        },
+      });
+    }
+    console.log(`💾 Database updated with ${allEvents.length} events`);
+  } catch (dbErr) {
+    console.error('  ⚠️ Database sync failed:', dbErr.message);
+  }
 
   // Update cache
   cachedEvents = allEvents;

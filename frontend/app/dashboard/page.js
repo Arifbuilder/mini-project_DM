@@ -115,6 +115,9 @@ export default function DashboardPage() {
   const [messages, setMessages] = useState([]);
   const [draftMessage, setDraftMessage] = useState('');
   const chatScrollRef = useRef(null);
+  const [aiData, setAiData] = useState(null);
+  const [fetchingAi, setFetchingAi] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('userPrefs');
@@ -167,6 +170,17 @@ export default function DashboardPage() {
   }, [prefs, fetchEvents, fetchStats]);
 
   useEffect(() => {
+    if (selectedEvent) {
+      setAiData(null);
+      setFetchingAi(true);
+      fetch(`${API_BASE}/api/ai/predict/${selectedEvent.id}`)
+        .then(res => res.json())
+        .then(data => { setAiData(data); setFetchingAi(false); })
+        .catch(() => setFetchingAi(false));
+    }
+  }, [selectedEvent?.id]);
+
+  useEffect(() => {
     let socket;
     const connect = async () => {
       try {
@@ -178,7 +192,10 @@ export default function DashboardPage() {
         });
         socket.on('events:update', () => fetchEvents());
         socket.on('message:new', (msg) => {
-          setMessages(prev => [...prev, msg]);
+          setMessages(prev => {
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
           if (activeTab === 'chat' && chatScrollRef.current) {
             setTimeout(() => chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight, 100);
           }
@@ -231,7 +248,10 @@ export default function DashboardPage() {
           userName: user?.name || 'Guest'
         })
       });
-    } catch (err) { console.error('Failed to report', err); }
+      setActiveTab('chat');
+      // Toast or simple alert
+      alert('Hazard report successfully transmitted to Global Command!');
+    } catch (err) { console.error('Failed to report', err); alert('Failed to connect to Command Center.'); }
   };
 
   const overallRisk = events.length > 0 && prefs?.latitude
@@ -284,6 +304,7 @@ export default function DashboardPage() {
           }}>
             🚨 Report Hazard
           </button>
+          <ToolbarBtn icon="🔥" active={showHeatmap} onClick={() => setShowHeatmap(p => !p)} title="Toggle Heatmap" />
           <ToolbarBtn icon="🔬" active={experimentalMode} onClick={toggleExperimental} title="Experimental Mode" activeColor="rgba(236,72,153,0.2)" activeBorder="rgba(236,72,153,0.3)" />
           <ToolbarBtn icon="📊" active={showTimeline} onClick={() => setShowTimeline(p => !p)} title="Timeline View" />
           <ToolbarBtn icon="🔔" active={showAlerts} onClick={() => setShowAlerts(p => !p)} title="Alerts" badge={notifications.length} />
@@ -307,6 +328,7 @@ export default function DashboardPage() {
               onSelectEvent={setSelectedEvent}
               selectedEvent={selectedEvent}
               mapStyle={mapStyle}
+              showHeatmap={showHeatmap}
             />
           )}
 
@@ -410,7 +432,7 @@ export default function DashboardPage() {
                             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0) 40%, var(--bg-secondary))' }} />
                           </div>
                         )}
-                        <div style={{ padding: '16px 20px' }}>
+                        <div style={{ padding: '16px 20px', maxHeight: 'calc(100vh - 280px)', overflowY: 'auto', flex: 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                               <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-sm)', background: `${TYPE_COLORS[selectedEvent.type] || '#6b7280'}25`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem' }}>
@@ -461,6 +483,38 @@ export default function DashboardPage() {
                               {!['earthquake', 'flood', 'wildfire', 'storm', 'volcano', 'tsunami', 'landslide'].includes(selectedEvent.type) && 'Review local emergency protocols. Stay tuned to official radio or television broadcasts.'}
                             </p>
                           </div>
+
+                          {/* AI PREDICTOR BLOCK */}
+                          {fetchingAi && (
+                            <div style={{ marginTop: 14, padding: 12, borderRadius: 'var(--radius-md)', background: 'var(--bg-glass)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }} style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(236,72,153,0.4)', borderTopColor: '#f472b6' }} />
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600 }}>AI analyzing heuristics...</div>
+                            </div>
+                          )}
+                          {!fetchingAi && aiData && !aiData.error && (
+                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ marginTop: 14, padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(236,72,153,0.1))', border: '1px solid rgba(236,72,153,0.2)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#f472b6', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  🤖 AI Risk Predictor
+                                </div>
+                                <div style={{ fontSize: '0.55rem', color: 'var(--text-tertiary)' }}>{aiData.aiModel}</div>
+                              </div>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                <div>
+                                  <div style={{ fontSize: '0.55rem', color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>AFTERSHOCK PROB.</div>
+                                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>{aiData.aftershockProbability}</div>
+                                </div>
+                                <div>
+                                  <div style={{ fontSize: '0.55rem', color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>STABILIZATION EST.</div>
+                                  <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)' }}>{aiData.estimatedStabilization}</div>
+                                </div>
+                                <div style={{ gridColumn: 'span 2', marginTop: 2 }}>
+                                  <div style={{ fontSize: '0.55rem', color: 'var(--text-tertiary)', letterSpacing: '0.04em' }}>SECONDARY IMPACT RISK</div>
+                                  <div style={{ fontSize: '0.8rem', fontWeight: 700, marginTop: 2, color: aiData.secondaryImpactRisk.includes('High') ? '#ef4444' : aiData.secondaryImpactRisk.includes('Moderate') ? '#f59e0b' : '#10b981' }}>{aiData.secondaryImpactRisk}</div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
                         </div>
                       </motion.div>
                     )}

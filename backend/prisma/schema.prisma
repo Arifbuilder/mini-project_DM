@@ -13,6 +13,8 @@ model User {
   password    String?
   name        String?
   isGuest     Boolean  @default(false)
+  role        String   @default("user") // "user", "analyst", "admin"
+  reputation  Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -63,6 +65,9 @@ model Message {
   latitude     Float?
   longitude    Float?
   disasterType String?
+  upvotes      Int      @default(0)
+  downvotes    Int      @default(0)
+  isVerified   Boolean  @default(false)
   userId       String?
   user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())

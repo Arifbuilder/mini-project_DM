@@ -11,6 +11,7 @@ const eventsRoutes = require('./routes/events');
 const preferencesRoutes = require('./routes/preferences');
 const weatherRoutes = require('./routes/weather');
 const messagesRoutes = require('./routes/messages');
+const aiRoutes = require('./routes/ai');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,6 +26,8 @@ app.use('/api/events', eventsRoutes);
 app.use('/api/preferences', preferencesRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/messages', messagesRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/admin', require('./routes/admin'));
 
 // Health check
 app.get('/api/health', (req, res) => {

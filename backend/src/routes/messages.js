@@ -1,6 +1,6 @@
 const express = require('express');
 const { PrismaClient } = require('@prisma/client');
-const { authRequired, authOptional } = require('../middleware/auth');
+const { authMiddleware, optionalAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/messages — send a message
-router.post('/', authOptional, async (req, res) => {
+router.post('/', optionalAuth, async (req, res) => {
   try {
     const { text, type = 'chat', latitude, longitude, disasterType } = req.body;
     if (!text || text.trim().length === 0) {
@@ -55,7 +55,7 @@ router.post('/', authOptional, async (req, res) => {
 });
 
 // POST /api/messages/report — submit a disaster report
-router.post('/report', authOptional, async (req, res) => {
+router.post('/report', optionalAuth, async (req, res) => {
   try {
     const { description, disasterType, severity, latitude, longitude, locationName } = req.body;
     if (!description) {
