@@ -121,13 +121,37 @@ async function pollAllSources(io) {
 
   console.log(`✅ Total events: ${allEvents.length} (${newEvents.length} new)`);
 
-  // Broadcast new events via WebSocket
+  // Broadcast new events via WebSocket (Personalized alerts)
   if (io && newEvents.length > 0) {
-    io.emit('events:new', newEvents);
-    console.log(`📢 Broadcasted ${newEvents.length} new events`);
+    const sockets = await io.fetchSockets();
+    const { calculateRiskScore, haversineDistance } = require('./riskScoring');
+    
+    let broadcastCount = 0;
+    for (const socket of sockets) {
+      const u = socket.userData;
+      if (u && u.latitude && u.longitude) {
+        // Filter new events for this specific user's radius
+        const radius = u.radiusKm || 500;
+        const personalNewEvents = newEvents.filter(e => 
+          haversineDistance(u.latitude, u.longitude, e.latitude, e.longitude) <= radius
+        ).map(e => ({
+          ...e,
+          risk: calculateRiskScore(e, u.latitude, u.longitude)
+        }));
+
+        if (personalNewEvents.length > 0) {
+          socket.emit('events:new', personalNewEvents);
+          broadcastCount++;
+        }
+      } else {
+        // Fallback: send all to unlocalized clients
+        socket.emit('events:new', newEvents.slice(0, 5));
+      }
+    }
+    console.log(`📢 Sent personalized alerts to ${broadcastCount} clients (${newEvents.length} total new)`);
   }
 
-  // Broadcast full event list
+  // Broadcast full event list update notification
   if (io) {
     io.emit('events:update', { count: allEvents.length, timestamp: new Date().toISOString() });
   }

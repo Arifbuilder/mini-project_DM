@@ -131,6 +131,7 @@ export default function DashboardPage() {
       const params = new URLSearchParams();
       if (prefs?.latitude) params.set('lat', prefs.latitude);
       if (prefs?.longitude) params.set('lng', prefs.longitude);
+      if (prefs?.radiusKm) params.set('radius', prefs.radiusKm);
       if (filterType !== 'all') params.set('type', filterType);
       const res = await fetch(`${API_BASE}/api/events?${params}`);
       const data = await res.json();
@@ -186,6 +187,16 @@ export default function DashboardPage() {
       try {
         const { io } = await import('socket.io-client');
         socket = io(API_BASE, { transports: ['websocket', 'polling'] });
+        
+        // Subscribe to local alerts
+        if (prefs?.latitude) {
+          socket.emit('subscribe:location', {
+            latitude: prefs.latitude,
+            longitude: prefs.longitude,
+            radiusKm: prefs.radiusKm || 500
+          });
+        }
+
         socket.on('events:new', (n) => {
           setNotifications(prev => [...n.slice(0, 3).map(e => ({ ...e, id: e.id + '-n-' + Date.now() })), ...prev].slice(0, 20));
           fetchEvents();

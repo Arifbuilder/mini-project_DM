@@ -18,11 +18,11 @@ router.get('/', optionalAuth, async (req, res) => {
     }
 
     // Filter by distance
-    if (lat && lng && radius) {
-      const userLat = parseFloat(lat);
-      const userLng = parseFloat(lng);
-      const maxRadius = parseFloat(radius);
+    const userLat = parseFloat(lat);
+    const userLng = parseFloat(lng);
+    const maxRadius = parseFloat(radius) || 500; // Default 500km if not specified
 
+    if (!isNaN(userLat) && !isNaN(userLng)) {
       events = events
         .map(e => ({
           ...e,
