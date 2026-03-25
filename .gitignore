@@ -36,6 +36,4 @@ desktop.ini
 prisma/*.db
 prisma/*.db-journal
 
-# Misc
-*.exe
-launcher.cs
+
