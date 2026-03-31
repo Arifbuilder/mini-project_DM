@@ -7,6 +7,7 @@ const { PrismaClient } = require('@prisma/client');
 const { fetchUSGSEarthquakes } = require('../connectors/usgs');
 const { fetchEONETEvents } = require('../connectors/eonet');
 const { fetchGDACSEvents } = require('../connectors/gdacs');
+const { dispatchAlerts } = require('./notificationService');
 
 const prisma = new PrismaClient();
 const CACHE_KEY = 'disaster_events';
@@ -149,6 +150,11 @@ async function pollAllSources(io) {
       }
     }
     console.log(`📢 Sent personalized alerts to ${broadcastCount} clients (${newEvents.length} total new)`);
+
+    // Dispatch real-time alerts via Email/SMS
+    for (const e of newEvents) {
+      dispatchAlerts(e).catch(err => console.error('Alert dispatch error:', err.message));
+    }
   }
 
   // Broadcast full event list update notification

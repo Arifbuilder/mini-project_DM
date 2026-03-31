@@ -28,6 +28,7 @@ app.use('/api/weather', weatherRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Health check
 app.get('/api/health', (req, res) => {

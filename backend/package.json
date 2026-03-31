@@ -18,7 +18,9 @@
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^3.0.3",
+    "nodemailer": "^8.0.4",
     "socket.io": "^4.8.0",
+    "twilio": "^5.13.1",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {
